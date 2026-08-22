@@ -1,0 +1,20 @@
+name: Despertador de Reset Automático
+
+on:
+  schedule:
+    # Se ejecuta cada una hora todos los días
+    - cron: '0 * * * *'
+  workflow_dispatch: # Habilita un botón en GitHub para ejecutarlo manualmente
+
+jobs:
+  reset-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar petición cURL de limpieza
+        env:
+          # Extraemos los valores desde los secretos protegidos de GitHub
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
+          RESET_SECRET: ${{ secrets.RESET_SECRET }}
+        run: |
+          curl -X POST "$PRODUCTION_URL/api/internal/reset" \
+          -H "X-Reset-Secret: $RESET_SECRET"
