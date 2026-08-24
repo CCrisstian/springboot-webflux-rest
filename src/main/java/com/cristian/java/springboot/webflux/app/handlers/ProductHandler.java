@@ -1,5 +1,6 @@
 package com.cristian.java.springboot.webflux.app.handlers;
 
+import com.cristian.java.springboot.webflux.app.models.Category;
 import com.cristian.java.springboot.webflux.app.models.Product;
 import com.cristian.java.springboot.webflux.app.services.ProductService;
 import org.springframework.http.HttpStatus;
@@ -125,5 +126,16 @@ public class ProductHandler {
                         .status(HttpStatus.NO_CONTENT)
                         .body(productService.delete(productDB), Void.class))
                 .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
+    /**
+     * Lista todas las categorías disponibles en la base de datos.
+     * Este endpoint es consumido principalmente por el frontend para llenar
+     * los menús desplegables (selects) en los formularios de creación y edición de productos.
+    **/
+    public Mono<ServerResponse> listCategories(ServerRequest request) {
+        return ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(productService.findAllCategories(), Category.class);
     }
 }

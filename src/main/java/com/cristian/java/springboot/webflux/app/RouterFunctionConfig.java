@@ -32,6 +32,8 @@ public class RouterFunctionConfig {
                 .andRoute(POST("/products"), handler::create)
                 .andRoute(PUT("/products/{id}"), handler::update)
                 .andRoute(DELETE("/products/{id}"), handler::remove)
+                .andRoute(GET("/categories"), handler::listCategories)
+                // ---------------------------
                 .andRoute(POST("/api/internal/reset"), resetHandler::resetDatabase)
                 .andRoute(GET("/api/events"), resetHandler::streamEvents);
     }

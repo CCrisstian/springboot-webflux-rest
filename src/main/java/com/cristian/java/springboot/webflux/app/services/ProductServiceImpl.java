@@ -43,4 +43,9 @@ public class ProductServiceImpl implements ProductService {
     public Mono<Category> saveCategory(Category category) {
         return categoryRepository.save(category);
     }
+
+    @Override
+    public Flux<Category> findAllCategories() {
+        return categoryRepository.findAll();
+    }
 }
