@@ -1,24 +1,40 @@
 package com.cristian.java.springboot.webflux.app;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.reactive.config.CorsRegistry;
-import org.springframework.web.reactive.config.WebFluxConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
-public class CorsConfig implements WebFluxConfigurer {
+public class CorsConfig {
 
     // Lee la variable de entorno FRONTEND_URL.
-    // Si no existe usa "http://localhost:4200" por defecto.
     @Value("${FRONTEND_URL:http://localhost:4200}")
     private String frontendUrl;
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // Habilita CORS para TODAS las rutas (/products, etc.)
-                .allowedOrigins(frontendUrl) // Permite solo a la URL de Angular
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Verbos HTTP permitidos
-                .allowedHeaders("*") // Permite cualquier cabecera
-                .allowCredentials(true); // Necesario si en el futuro envías cookies o tokens
+    @Bean
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration corsConfig = new CorsConfiguration();
+
+        // Permite solo a la URL de Angular
+        corsConfig.setAllowedOrigins(Arrays.asList(frontendUrl));
+        // Verbos HTTP permitidos
+        corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Permite cualquier cabecera
+        corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        // Necesario para Server-Sent Events y credenciales
+        corsConfig.setAllowCredentials(true);
+        // Tiempo en caché para la configuración de CORS
+        corsConfig.setMaxAge(8000L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Aplica a TODAS las rutas
+        source.registerCorsConfiguration("/**", corsConfig);
+
+        return new CorsWebFilter(source);
     }
 }
