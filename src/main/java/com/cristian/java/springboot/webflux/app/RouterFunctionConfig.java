@@ -35,6 +35,7 @@ public class RouterFunctionConfig {
                 .andRoute(GET("/categories"), handler::listCategories)
                 // ---------------------------
                 .andRoute(POST("/api/internal/reset"), resetHandler::resetDatabase)
-                .andRoute(GET("/api/events"), resetHandler::streamEvents);
+                .andRoute(GET("/api/events"), resetHandler::streamEvents)
+                .andRoute(GET("/api/internal/ping"), resetHandler::pingServer);
     }
 }

@@ -6,6 +6,7 @@ import com.cristian.java.springboot.webflux.app.services.ProductService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -14,6 +15,8 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.time.LocalDateTime;
+import org.springframework.http.codec.ServerSentEvent;
+import java.time.Duration;
 
 @Component
 public class ResetHandler {
@@ -33,23 +36,13 @@ public class ResetHandler {
         this.mongoTemplate = mongoTemplate;
     }
 
-    public Mono<ServerResponse> resetDatabase(ServerRequest request) {
-
-        // 1. Validamos la contraseña en los Headers
-        String secret = request.headers().firstHeader("X-Reset-Secret");
-
-        // Comparamos el secreto inyectado con el que envió el usuario
-        if (!resetSecret.equals(secret)) {
-            return ServerResponse.status(403).bodyValue("Acceso denegado");
-        }
-
-        // 2. Preparamos los datos
+    // --- 1. LÓGICA CENTRAL DE RESETEO (Reutilizable) ---
+    private Mono<Void> performDatabaseReset() {
         Category electronics = new Category("Electronico");
         Category sport = new Category("Deporte");
         Category computing = new Category("Computacion");
         Category furniture = new Category("Muebles");
 
-        // 3. Ejecutamos el flujo reactivo de borrado e inserción
         return this.mongoTemplate.dropCollection("products")
                 .then(this.mongoTemplate.dropCollection("categories"))
                 .thenMany(Flux.just(electronics, sport, computing, furniture)
@@ -67,15 +60,53 @@ public class ResetHandler {
                             return service.save(product);
                         })
                 )
-                .then(ServerResponse.ok().bodyValue("Base de datos reiniciada con éxito"))
-                // Al finalizar la limpieza, emitimos la señal para el frontend
-                .doOnSuccess(response -> sink.tryEmitNext("RELOAD_DATA"));
+                // Al finalizar la limpieza, emitimos la señal al canal
+                .doOnComplete(() -> sink.tryEmitNext("RELOAD_DATA"))
+                .then(); // Convertimos el resultado final a Mono<Void>
     }
 
-    // Endpoint público para que Angular escuche los eventos (SSE)
+    // --- 2. CRONJOB INTERNO (Se ejecuta a los 0, 15, 30 y 45 min) ---
+    @Scheduled(cron = "0 */15 * * * *")
+    public void autoCleanDatabase() {
+        System.out.println("⏰ [CRONJOB] Ejecutando limpieza de BD programada...");
+
+        // ¡Crucial! Al no haber una petición HTTP, debemos suscribirnos manualmente
+        performDatabaseReset().subscribe(
+                null, // onNext (no devuelve nada porque es Void)
+                error -> System.err.println("❌ Error en el cronjob: " + error.getMessage()),
+                () -> System.out.println("✅ Limpieza automática completada.")
+        );
+    }
+
+    // --- 3. ENDPOINT MANUAL (Activado por GitHub Actions o manual) ---
+    public Mono<ServerResponse> resetDatabase(ServerRequest request) {
+        String secret = request.headers().firstHeader("X-Reset-Secret");
+
+        if (!resetSecret.equals(secret)) {
+            return ServerResponse.status(403).bodyValue("Acceso denegado");
+        }
+
+        // Llamamos al método central y devolvemos la respuesta HTTP
+        return performDatabaseReset()
+                .then(ServerResponse.ok().bodyValue("Base de datos reiniciada con éxito"));
+    }
+
+    // --- 4. ENDPOINT PÚBLICO SSE (Para Angular) ---
     public Mono<ServerResponse> streamEvents(ServerRequest request) {
+        Flux<ServerSentEvent<String>> events = sink.asFlux()
+                .map(data -> ServerSentEvent.<String>builder().data(data).build());
+
+        Flux<ServerSentEvent<String>> keepAlive = Flux.interval(Duration.ofSeconds(15))
+                .map(tick -> ServerSentEvent.<String>builder().comment("keep-alive").build());
+
         return ServerResponse.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
-                .body(sink.asFlux(), String.class);
+                .body(Flux.merge(events, keepAlive), ServerSentEvent.class);
+    }
+
+    // --- 5. ENDPOINT PING (El verdadero despertador para GitHub Actions) ---
+    public Mono<ServerResponse> pingServer(ServerRequest request) {
+        System.out.println("🔔 [PING] Servidor despertado exitosamente por agente externo.");
+        return ServerResponse.ok().bodyValue("Pong - Servidor activo y despierto");
     }
 }

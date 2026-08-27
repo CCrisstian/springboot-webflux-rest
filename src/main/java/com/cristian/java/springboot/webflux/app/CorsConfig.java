@@ -30,7 +30,6 @@ public class CorsConfig {
         corsConfig.setAllowCredentials(true);
         // Tiempo en caché para la configuración de CORS
         corsConfig.setMaxAge(8000L);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // Aplica a TODAS las rutas
         source.registerCorsConfiguration("/**", corsConfig);

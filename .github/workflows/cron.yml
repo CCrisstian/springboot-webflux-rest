@@ -16,5 +16,6 @@ jobs:
           PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
           RESET_SECRET: ${{ secrets.RESET_SECRET }}
         run: |
-          curl -X POST "$PRODUCTION_URL/api/internal/reset" \
+          # ¡Nota la barra invertida al final de esta línea!
+          curl -X GET "$PRODUCTION_URL/api/internal/ping" \
           -H "X-Reset-Secret: $RESET_SECRET"
