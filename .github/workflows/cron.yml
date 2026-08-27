@@ -3,7 +3,9 @@ name: Despertador de Reset Automático
 on:
   schedule:
     # Se ejecuta cada una hora todos los días
-    - cron: '0 * * * *'
+    # - cron: '0 * * * *'
+    # Se ejecuta cada 5 minutos (el mínimo permitido por GitHub Actions)
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Habilita un botón en GitHub para ejecutarlo manualmente
 
 jobs:
